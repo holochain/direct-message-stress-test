@@ -33,7 +33,7 @@ mod my_zome {
 
     #[zome_fn("hc_public")]
     pub fn send_message(to: Address) -> ZomeApiResult<String> {
-        hdk::send(to, "".to_string(), 60000.into())
+        hdk::send(to, "request".to_string(), 6000.into())
     }
 
     #[zome_fn("hc_public")]
@@ -43,8 +43,8 @@ mod my_zome {
 
     #[receive]
     pub fn receive(_sender: Address, _payload: String) -> String {
-        panic!("");
-        String::from("not reachable")
+        // panic!("");
+        String::from("response")
     }
 
 }

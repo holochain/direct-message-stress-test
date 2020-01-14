@@ -11,7 +11,7 @@ process.on('unhandledRejection', error => {
   console.error('got unhandledRejection:', error);
 });
 
-const dnaPath = path.join(__dirname, "../dist/dna_panic_on_receive.dna.json")
+const dnaPath = path.join(__dirname, "../dist/direct_message_stress_test.dna.json")
 
 const orchestrator = new Orchestrator({
   middleware: combine(
@@ -35,17 +35,15 @@ orchestrator.registerScenario("send a direct message where the receive function 
   const {alice, bob} = await s.players({alice: conductorConfig, bob: conductorConfig}, true)
   const response = await alice.call("app", "main", "send_message", {"to" : bob.info('app').agentAddress})
   console.log(response)
-  t.equal(response, {})
+  t.deepEqual(response, { Ok: 'response' })
 })
 
-orchestrator.registerScenario("commit an entry and drop the author offline before it can propagate", async (s, t) => {
-  const {alice, bob} = await s.players({alice: conductorConfig, bob: conductorConfig}, true)
-  const addr = await alice.call("app", "main", "commit_a", {})
-  alice.kill()
-  await s.consistency()
-  t.ok(addr.Ok)
-})
-
-
+// orchestrator.registerScenario("commit an entry and drop the author offline before it can propagate", async (s, t) => {
+//   const {alice, bob} = await s.players({alice: conductorConfig, bob: conductorConfig}, true)
+//   const addr = await alice.call("app", "main", "commit_a", {})
+//   alice.kill()
+//   await s.consistency()
+//   t.ok(addr.Ok)
+// })
 
 orchestrator.run()

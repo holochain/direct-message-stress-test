@@ -1,10 +1,28 @@
 {
-  "devDependencies": {},
-  "dependencies": {
-    "@holochain/tryorama": "^0.3.0",
+  "devDependencies": {
+    "@babel/core": "^7.4.3",
+    "@babel/plugin-proposal-object-rest-spread": "^7.4.3",
+    "@babel/preset-env": "^7.4.3",
+    "@types/node": "^12.7.12",
+    "babel-loader": "^8.0.5",
     "faucet": "0.0.1",
-    "json3": "*",
-    "sleep": "^6.1.0",
-    "tape": "^4.9.1"
+    "ts-node": "^8.5.4",
+    "typescript": "^3.6.3",
+    "webpack": "^4.29.6",
+    "webpack-cli": "^3.3.0"
+  },
+  "dependencies": {
+    "@holochain/n-bch-rs": "git://github.com/holochain/n-bch-rs.git#master",
+    "@holochain/tryorama": "0.3.2-dev.2",
+    "@holochain/tryorama-stress-utils": "0.0.10",
+    "json3": "^3.3.3",
+    "multihashes": "git://github.com/holochain/js-multihash.git#feature-holochain-address",
+    "ramda": "^0.26.1",
+    "rfc4648": "^1.1.0",
+    "tape": "^4.11.0",
+    "varint": "^5.0.0"
+  },
+  "scripts": {
+    "test:stress": "ts-node stress_test/index.ts"
   }
 }
