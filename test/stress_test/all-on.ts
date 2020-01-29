@@ -2,12 +2,12 @@ import { Config } from '@holochain/tryorama'
 import * as R from 'ramda'
 import { Batch } from '@holochain/tryorama-stress-utils'
 
-module.exports = (scenario, configBatchSimple, N, M) => {
+module.exports = (scenario, configBatch, N, C, I) => {
+  const totalConductors = N*C;
   scenario('DDOS an agent', async (s, t) => {
     // This stress test is to swamp an agent with loads of direct messages and see at what point this fails
     // Every agent will message agent0 
-
-    const players = R.sortBy(p => parseInt(p.name, 10), R.values(await s.players(configBatchSimple(N, M), true)))
+    const players = R.sortBy(p => parseInt(p.name, 10), R.values(await s.players(configBatch(totalConductors, I), true)))
     const batch = new Batch(players).iteration('series')
 
     // Lets collect all agents, and use this to reliably enumerate an agent by agentAddress
@@ -24,6 +24,7 @@ module.exports = (scenario, configBatchSimple, N, M) => {
     const messageResult = await batch.mapInstances( instance =>
         instance.call('main', 'send_message', {to: agent0Address})
     )
+    console.log("NUM_AGENTS" + R.length(messageResult)); 
 
     console.log( "***DEBUG***: all promises: " + JSON.stringify( messageResult, null, 2 ))
     t.ok(messageResult.every(r => r.Ok))

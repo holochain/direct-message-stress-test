@@ -1,13 +1,14 @@
 import { Config } from '@holochain/tryorama'
 import * as R from 'ramda'
+import { configBatchSimple } from '@holochain/tryorama-stress-utils';
 
-const { Orchestrator, tapeExecutor, singleConductor, compose, localOnly, machinePerPlayer } = require('@holochain/tryorama')
+import { Orchestrator, tapeExecutor, singleConductor, compose, localOnly, groupPlayersByMachine } from '@holochain/tryorama'
 
 process.on('unhandledRejection', error => {
   console.error('got unhandledRejection:', error);
 });
 
-const networkType = process.env.APP_SPEC_NETWORK_TYPE || 'sim2h'
+const networkType = process.env.APP_SPEC_NETWORK_TYPE || 'sim2h_public'
 let network = null
 
 // default middleware is localOnly
@@ -27,13 +28,13 @@ switch (networkType) {
   case 'sim2h':
     network = {
       type: 'sim2h',
-      sim2h_url: "ws://localhost:9000",
+      sim2h_url: "ws://localhost:9002",
     }
     break
   case 'sim2h_public':
       network = {
           type: 'sim2h',
-          sim2h_url: "wss://sim2h.holochain.org:9000",
+          sim2h_url: "ws://sim2h.holochain.org:9000",
       }
       break
   default:
@@ -46,43 +47,60 @@ if (process.env.HC_TRANSPORT_CONFIG) {
 }
 
 // default stress test is local (because there are no endpoints specified)
-let stress_config = {
-    conductors: 4,
-    instances: 20,
-    endpoints: undefined
+const defaultStressConfig = {
+    nodes: 1,
+    conductors: 10,
+    instances: 1,
+    endpoints: undefined,
+    tests: {
+        allOn: {
+            skip: false,
+        },
+        telephoneGame: {
+            skip: true
+        },
+        telephoneHammer: {
+            skip: true,
+            count: 10
+        },
+        directMessage: {
+            skip: true
+        },
+        easy: {
+            skip: true,
+            spinUpDelay: 10,
+        },
+        sanity: {
+            skip: true
+        }
+    }
 }
 
-let run_name = ""+Date.now()  // default exam name is just a timestamp
-// first arg is the exam name
-if (process.argv[2]) {
-    run_name=process.argv[2]
-}
+const runName = process.argv[2] || ""+Date.now()  // default exam name is just a timestamp
 
 // second arg is an optional stress config file
-if (process.argv[3]) {
-    stress_config=require(process.argv[3])
-}
+const stressConfig = process.argv[3] ? require(process.argv[3]) : defaultStressConfig
 
-
-const dnaLocal = Config.dna(
-  '../dist/direct_message_stress_test.dna.json',
-  'dm_stress_test'
-)
-
+const dnaLocal = Config.dna('../dist/direct-message-stress-test.dna.json', 'dm_stress_test')
+const dnaRemote = Config.dna('https://github.com/holochain/passthrough-dna/releases/download/v0.0.1/direct-message-stress-test.dna.json', 'dm_stress_test')
 let chosenDna = dnaLocal;
 
-/** Builder function for a function that generates a bunch of identical conductor configs
- with multiple identical instances */
-const makeBatcher = (dna, commonConfig) => (numConductors, numInstances) => {
-    const conductor = R.pipe(
-        R.map(n => [`${n}`, dna]),
-        R.fromPairs,
-        instances => Config.gen(instances, commonConfig),
-    )(R.range(0, numInstances))
-    return R.repeat(conductor, numConductors)
-}
+let metric_publisher;
+// if there are endpoints specified then we use the machinePerPlayer middleware so tryorama
+// knows to connect to trycp on those endpoints for running the tests
+if (stressConfig.endpoints) {
+    chosenDna = dnaRemote
+    middleware = compose(tapeExecutor(require('tape')), groupPlayersByMachine(stressConfig.endpoints, stressConfig.conductors))
 
-let metric_publisher = {type: 'logger'}
+    metric_publisher = ({scenarioName, playerName}) => ({
+        type: 'cloudwatchlogs',
+        log_stream_name: "".concat(runName, ".", networkType, ".", 'passthrough-dna', ".", scenarioName.replace(/:/g, '_'), ".", playerName),
+        log_group_name: '/holochain/trycp/'
+    })
+
+} else {
+    metric_publisher = { type: 'logger' }
+}
 
 console.log("using dna: "+ JSON.stringify(chosenDna))
 console.log("using network: "+ JSON.stringify(network))
@@ -95,10 +113,27 @@ const commonConfig = {
   logger: Config.logger(true),
   metric_publisher
 }
-const batcher = makeBatcher(chosenDna, commonConfig)
 
-console.log(`Running stress test id=${run_name} with N=${stress_config.conductors}, M=${stress_config.instances}`)
+const batcher = (numConductors, instancesPerConductor) => configBatchSimple(
+  numConductors,
+  instancesPerConductor,
+  chosenDna,
+  commonConfig
+)
 
-require('./all-on')(orchestrator.registerScenario, batcher, stress_config.conductors, stress_config.instances)
+console.log(`Running stress test id=${runName} with Config: \n`, stressConfig)
+
+if (stressConfig.tests == undefined) {
+  stressConfig.tests = {
+    allOn: {
+      skip: false
+    }
+  }
+}
+
+if (stressConfig.tests["allOn"]  && !stressConfig.tests["allOn"].skip) {
+  console.log("running all-on")
+  require('./all-on')(orchestrator.registerScenario, batcher, stressConfig.nodes, stressConfig.conductors, stressConfig.instances)
+}
 
 orchestrator.run()
