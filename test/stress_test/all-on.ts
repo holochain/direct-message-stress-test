@@ -7,7 +7,10 @@ module.exports = (scenario, configBatch, N, C, I) => {
   scenario('DDOS an agent', async (s, t) => {
     // This stress test is to swamp an agent with loads of direct messages and see at what point this fails
     // Every agent will message agent0 
-    const players = R.sortBy(p => parseInt(p.name, 10), R.values(await s.players(configBatch(totalConductors, I), true)))
+    const players = R.sortBy(p => parseInt(p.name, 10), R.values(await s.players(configBatch(totalConductors, I), false)))
+    await Promise.all(players.map(async player => {
+      return player.spawn()
+    }))
     const batch = new Batch(players).iteration('series')
 
     // Lets collect all agents, and use this to reliably enumerate an agent by agentAddress
