@@ -82,7 +82,7 @@ const runName = process.argv[2] || ""+Date.now()  // default exam name is just a
 const stressConfig = process.argv[3] ? require(process.argv[3]) : defaultStressConfig
 
 const dnaLocal = Config.dna('../dist/direct-message-stress-test.dna.json', 'dm_stress_test')
-const dnaRemote = Config.dna('https://github.com/holochain/passthrough-dna/releases/download/v0.0.1/direct-message-stress-test.dna.json', 'dm_stress_test')
+const dnaRemote = Config.dna('https://github.com/holochain/direct-message-stress-test/releases/download/v0.0.1/direct-message-stress-test.dna.json', 'dm_stress_test')
 let chosenDna = dnaLocal;
 
 let metric_publisher;
